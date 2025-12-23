@@ -4,6 +4,7 @@ from typing import Iterable
 
 import numpy as np
 from rdkit import Chem
+from rdkit.Geometry import Point3D
 
 
 def canonical_atom_order(mol: Chem.Mol) -> list[int]:
@@ -99,19 +100,6 @@ def classical_mds(dist: np.ndarray, n_components: int = 3) -> np.ndarray:
     return coords.astype(np.float32)
 
 
-def kabsch_rmsd_allow_reflection(p: np.ndarray, q: np.ndarray) -> float:
-    if p.shape != q.shape:
-        raise ValueError(f"shape mismatch: {p.shape} vs {q.shape}")
-    p0 = p.astype(np.float64) - p.mean(axis=0, keepdims=True)
-    q0 = q.astype(np.float64) - q.mean(axis=0, keepdims=True)
-    h = p0.T @ q0
-    u, _, vt = np.linalg.svd(h)
-    r = vt.T @ u.T
-    p_aligned = p0 @ r
-    diff = p_aligned - q0
-    return float(np.sqrt((diff * diff).sum() / p.shape[0]))
-
-
 def coords_from_match(mol3d: Chem.Mol, order_2d: list[int], match_2d_to_3d: tuple[int, ...]) -> np.ndarray:
     conf = mol3d.GetConformer()
     n = len(order_2d)
@@ -121,3 +109,20 @@ def coords_from_match(mol3d: Chem.Mol, order_2d: list[int], match_2d_to_3d: tupl
         pt = conf.GetAtomPosition(int(atom_idx_3d))
         xyz[pos] = (pt.x, pt.y, pt.z)
     return xyz
+
+
+def mol_from_smiles_coords(smiles: str, coords: np.ndarray) -> Chem.Mol:
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        raise ValueError(f"Invalid SMILES: {smiles}")
+    if coords.shape[0] != mol.GetNumAtoms():
+        raise ValueError(f"Atom count mismatch for SMILES={smiles}: {coords.shape[0]} vs {mol.GetNumAtoms()}")
+
+    order = canonical_atom_order(mol)
+    conf = Chem.Conformer(mol.GetNumAtoms())
+    for pos, atom_idx in enumerate(order):
+        x0, y0, z0 = map(float, coords[pos])
+        conf.SetAtomPosition(int(atom_idx), Point3D(x0, y0, z0))
+    mol.RemoveAllConformers()
+    mol.AddConformer(conf, assignId=True)
+    return mol

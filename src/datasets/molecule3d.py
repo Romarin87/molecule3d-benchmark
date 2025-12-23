@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import glob
-from dataclasses import dataclass
+import json
 from pathlib import Path
 from typing import Iterator
 
+import numpy as np
 import pyarrow.parquet as pq
 from rdkit import Chem
 
@@ -93,6 +94,53 @@ def iter_records(
 
         count += 1
         yield MoleculeRecord(smiles=smiles, mol3d=mol3d)
+
+
+def _coerce_str(value: object) -> str | None:
+    if isinstance(value, str):
+        return value
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="ignore")
+    return None
+
+
+def iter_manifest_records(
+    manifest_path: str | Path,
+    atom_count: int | None = None,
+    max_samples: int = 0,
+) -> Iterator[MoleculeRecord]:
+    manifest_path = Path(manifest_path).expanduser().resolve()
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    shards = manifest.get("shards", [])
+    count = 0
+    for shard in shards:
+        shard_path = Path(shard.get("path", ""))
+        if not shard_path.is_absolute():
+            shard_path = (manifest_path.parent / shard_path).resolve()
+        with np.load(shard_path, allow_pickle=True) as data:
+            smiles_list = data["smiles"]
+            sdf_list = data["sdf"]
+            for smiles, sdf in zip(smiles_list, sdf_list):
+                if max_samples > 0 and count >= max_samples:
+                    return
+                smi = _coerce_str(smiles)
+                block = _coerce_str(sdf)
+                if not smi or not block:
+                    continue
+
+                mol2d = Chem.MolFromSmiles(smi)
+                if mol2d is None:
+                    continue
+                mol3d = parse_dataset_sdf(block)
+                if mol3d is None:
+                    continue
+
+                if atom_count is not None:
+                    if mol2d.GetNumAtoms() != atom_count or mol3d.GetNumAtoms() != atom_count:
+                        continue
+
+                count += 1
+                yield MoleculeRecord(smiles=smi, mol3d=mol3d)
 
 
 def load_records(
