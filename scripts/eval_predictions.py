@@ -32,11 +32,13 @@ def _coerce_str(value: object) -> str | None:
 
 
 def _parse_sdf(sdf: str) -> Chem.Mol | None:
-    mol = Chem.MolFromMolBlock("Molecule\n" + sdf, removeHs=False)
+    sdf = sdf.strip()
+    if not sdf:
+        return None
+    mol = Chem.MolFromMolBlock(sdf, removeHs=False)
     if mol is not None:
         return mol
-    mol = Chem.MolFromMolBlock(sdf, removeHs=False)
-    return mol
+    return Chem.MolFromMolBlock("Molecule\n" + sdf, removeHs=False)
 
 
 def _plot_rmsd(rmsds: list[float], out_path: Path) -> None:

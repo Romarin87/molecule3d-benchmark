@@ -17,7 +17,7 @@ if str(ROOT) not in sys.path:
 
 from src.datasets.graph import record_to_graph
 from src.datasets.molecule3d import iter_manifest_records
-from src.models.chem_utils import mol_from_smiles_coords
+from src.models.chem_utils import init_coords_from_smiles, mol_from_smiles_coords
 from src.models.distance_regressor import DistanceRegressorModel
 from src.models.egnn import EGNN
 from src.models.etkdg import ETKDGModel
@@ -204,7 +204,10 @@ def main() -> None:
                     if sample is None:
                         raise RuntimeError("Failed to featurize record.")
                     node_feats, edge_index, edge_attr, _, _ = sample.to_torch(device=device)
-                    coords = model(node_feats, edge_index, edge_attr=edge_attr)
+                    coords0 = torch.from_numpy(init_coords_from_smiles(sample.smiles)).to(
+                        device=device, dtype=node_feats.dtype
+                    )
+                    coords = model(node_feats, edge_index, edge_attr=edge_attr, coords=coords0)
                     mol = mol_from_smiles_coords(sample.smiles, coords.cpu().numpy())
                 else:
                     raise ValueError(f"Unknown method: {method}")

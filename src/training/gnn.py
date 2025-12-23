@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from typing import Iterable
 
 import numpy as np
@@ -7,6 +8,7 @@ import numpy as np
 from ..datasets.graph import GraphSample
 from ..models.egnn import EGNN
 from ..models.mpnn import MPNN
+from ..models.chem_utils import init_coords_from_smiles
 
 try:
     import torch
@@ -16,6 +18,52 @@ except Exception:  # pragma: no cover - optional dependency
     torch = None
     nn = None
     F = None
+
+try:
+    from tqdm import tqdm
+except Exception:  # pragma: no cover - optional dependency
+    tqdm = None
+
+
+class _SimpleProgress:
+    def __init__(self, total: int, desc: str) -> None:
+        self.total = total
+        self.desc = desc
+        self.count = 0
+        self.width = 30
+        self._last_len = 0
+
+    def update(self, n: int = 1) -> None:
+        if self.total <= 0:
+            return
+        self.count += n
+        filled = int(self.width * self.count / self.total)
+        bar = "#" * filled + "-" * (self.width - filled)
+        pct = (self.count / self.total) * 100
+        msg = f"{self.desc} [{bar}] {self.count}/{self.total} ({pct:5.1f}%)"
+        if self._last_len > len(msg):
+            msg = msg + " " * (self._last_len - len(msg))
+        sys.stderr.write("\r" + msg)
+        sys.stderr.flush()
+        self._last_len = len(msg)
+
+    def close(self) -> None:
+        if self.total <= 0:
+            return
+        sys.stderr.write("\n")
+        sys.stderr.flush()
+
+    def __enter__(self) -> "_SimpleProgress":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
+
+
+def _progress(total: int, desc: str):
+    if tqdm is not None:
+        return tqdm(total=total, desc=desc, ascii=True)
+    return _SimpleProgress(total=total, desc=desc)
 
 
 def _ensure_torch() -> None:
@@ -56,15 +104,18 @@ def train_mpnn(
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
     dataset = list(samples)
-    for _ in range(epochs):
-        model.train()
-        for sample in dataset:
-            node_feats, edge_index, edge_attr, dist_vec, _ = _to_torch(sample, device=device)
-            pred = model(node_feats, edge_index, edge_attr)
-            loss = F.mse_loss(pred, dist_vec)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+    total_steps = len(dataset) * epochs
+    with _progress(total=total_steps, desc="train_mpnn") as pbar:
+        for _ in range(epochs):
+            model.train()
+            for sample in dataset:
+                node_feats, edge_index, edge_attr, dist_vec, _ = _to_torch(sample, device=device)
+                pred = model(node_feats, edge_index, edge_attr)
+                loss = F.mse_loss(pred, dist_vec)
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                pbar.update(1)
 
     return model
 
@@ -89,15 +140,20 @@ def train_egnn(
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
     dataset = list(samples)
-    for _ in range(epochs):
-        model.train()
-        for sample in dataset:
-            node_feats, edge_index, edge_attr, dist_vec, _ = _to_torch(sample, device=device)
-            coords = model(node_feats, edge_index, edge_attr=edge_attr)
-            pred_dist = _dist_vector_from_coords(coords)
-            loss = F.mse_loss(pred_dist, dist_vec)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+    init_coords = [torch.from_numpy(init_coords_from_smiles(sample.smiles)) for sample in dataset]
+    total_steps = len(dataset) * epochs
+    with _progress(total=total_steps, desc="train_egnn") as pbar:
+        for _ in range(epochs):
+            model.train()
+            for sample, init_xyz in zip(dataset, init_coords):
+                node_feats, edge_index, edge_attr, dist_vec, _ = _to_torch(sample, device=device)
+                coords0 = init_xyz.to(device=device, dtype=node_feats.dtype)
+                coords = model(node_feats, edge_index, edge_attr=edge_attr, coords=coords0)
+                pred_dist = _dist_vector_from_coords(coords)
+                loss = F.mse_loss(pred_dist, dist_vec)
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                pbar.update(1)
 
     return model

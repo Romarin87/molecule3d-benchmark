@@ -4,6 +4,7 @@ from typing import Iterable
 
 import numpy as np
 from rdkit import Chem
+from rdkit.Chem import rdDepictor
 from rdkit.Geometry import Point3D
 
 
@@ -126,3 +127,37 @@ def mol_from_smiles_coords(smiles: str, coords: np.ndarray) -> Chem.Mol:
     mol.RemoveAllConformers()
     mol.AddConformer(conf, assignId=True)
     return mol
+
+
+def init_coords_from_smiles(smiles: str) -> np.ndarray:
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        raise ValueError(f"Invalid SMILES: {smiles}")
+
+    try:
+        rdDepictor.Compute2DCoords(mol)
+    except Exception:
+        try:
+            from rdkit.Chem import AllChem
+        except Exception:  # pragma: no cover - optional dependency
+            AllChem = None
+        if AllChem is not None:
+            AllChem.Compute2DCoords(mol)
+
+    n = mol.GetNumAtoms()
+    coords = np.zeros((n, 3), dtype=np.float32)
+    if mol.GetNumConformers() > 0:
+        conf = mol.GetConformer()
+        order = canonical_atom_order(mol)
+        for pos, atom_idx in enumerate(order):
+            pt = conf.GetAtomPosition(int(atom_idx))
+            coords[pos] = (float(pt.x), float(pt.y), 0.0)
+
+    if not coords.any():
+        if n == 1:
+            coords[0, 0] = 1.0
+        else:
+            angles = np.linspace(0.0, 2.0 * np.pi, n, endpoint=False, dtype=np.float32)
+            coords[:, 0] = np.cos(angles)
+            coords[:, 1] = np.sin(angles)
+    return coords

@@ -20,11 +20,11 @@ export XDG_CACHE_HOME="$ROOT/.cache"
 
 mkdir -p "$ROOT/.mplconfig" "$ROOT/.cache" "$ROOT/data/processed/minitest" "$ROOT/checkpoints" "$ROOT/predictions"
 
-ATOM_COUNT=12
-TRAIN_SAMPLES=500
-TEST_SAMPLES=500
-NUM_CONFS=3
-EPOCHS=100
+ATOM_COUNT=20
+TRAIN_SAMPLES=100
+TEST_SAMPLES=1000
+NUM_CONFS=1
+EPOCHS=10
 
 prepare_split() {
   local split="$1"
@@ -52,12 +52,12 @@ prepare_split() {
   fi
 }
 
-echo "[1/6] prepare_data (train=${TRAIN_SAMPLES}, test=${TEST_SAMPLES})"
-prepare_split train train_chon12 "$TRAIN_SAMPLES"
-prepare_split test test_chon12 "$TEST_SAMPLES"
+echo "[1/6] prepare_data (train=${TRAIN_SAMPLES}, test=prebuilt)"
+prepare_split train train_chon20 "$TRAIN_SAMPLES"
+# prepare_split test test_chon12 "$TEST_SAMPLES"
 
-TRAIN_MANIFEST="data/processed/minitest/train_chon12_manifest.json"
-TEST_MANIFEST="data/processed/minitest/test_chon12_manifest.json"
+TRAIN_MANIFEST="data/processed/minitest/train_chon20_manifest.json"
+TEST_MANIFEST="data/processed/minitest/test_chon20_manifest.json"
 
 echo "[2/6] train baselines and GNNs"
 python scripts/train_knn.py \
