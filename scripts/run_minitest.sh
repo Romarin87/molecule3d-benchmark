@@ -21,10 +21,10 @@ export XDG_CACHE_HOME="$ROOT/.cache"
 mkdir -p "$ROOT/.mplconfig" "$ROOT/.cache" "$ROOT/data/processed/minitest" "$ROOT/checkpoints" "$ROOT/predictions"
 
 ATOM_COUNT=20
-TRAIN_SAMPLES=100
+TRAIN_SAMPLES=1000
 TEST_SAMPLES=1000
 NUM_CONFS=1
-EPOCHS=10
+EPOCHS=20
 
 prepare_split() {
   local split="$1"

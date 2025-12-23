@@ -79,6 +79,25 @@ def _load_egnn(path: Path, device: str) -> tuple[EGNN, dict]:
     return model, config
 
 
+def _mol_to_sdf(mol: Chem.Mol, name: str | None) -> str:
+    mol = Chem.Mol(mol)
+    if name:
+        try:
+            mol.SetProp("_Name", name)
+        except Exception:
+            pass
+    block = Chem.MolToMolBlock(mol)
+    parsed = Chem.MolFromMolBlock(block, removeHs=False, sanitize=False)
+    if parsed is None:
+        return block
+    if name:
+        try:
+            parsed.SetProp("_Name", name)
+        except Exception:
+            pass
+    return Chem.MolToMolBlock(parsed)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Predict structures for any baseline/GNN model.")
     parser.add_argument(
@@ -211,7 +230,7 @@ def main() -> None:
                     mol = mol_from_smiles_coords(sample.smiles, coords.cpu().numpy())
                 else:
                     raise ValueError(f"Unknown method: {method}")
-                sdf_block = Chem.MolToMolBlock(mol)
+                sdf_block = _mol_to_sdf(mol, rec.smiles)
                 predicted += 1
             except Exception:
                 failed += 1
