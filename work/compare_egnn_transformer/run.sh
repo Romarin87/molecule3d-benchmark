@@ -34,6 +34,7 @@ DROPOUT="${DROPOUT:-0.0}"
 RBF_BINS="${RBF_BINS:-16}"
 RBF_CUTOFF="${RBF_CUTOFF:-5.0}"
 TRAIN_SIZES_STR="${TRAIN_SIZES_STR:-1000 5000 10000 20000}"
+BATCH_SIZE="${BATCH_SIZE:-32}"
 DO_EVAL="${DO_EVAL:-1}"
 DO_PLOT="${DO_PLOT:-0}"
 RESUME="${RESUME:-0}"
@@ -104,6 +105,7 @@ for num_layers in "${NUM_LAYERS_LIST[@]}"; do
       --rbf-cutoff "$RBF_CUTOFF" \
       --epochs "$EPOCHS" \
       --lr "$LR" \
+      --batch-size "$BATCH_SIZE" \
       --device "$DEVICE" \
       --seed "$SEED" \
       --output "$ckpt_path" \

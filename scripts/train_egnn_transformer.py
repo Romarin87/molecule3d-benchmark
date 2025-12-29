@@ -97,6 +97,7 @@ def main() -> None:
     parser.add_argument("--rbf-cutoff", type=float, default=5.0)
     parser.add_argument("--epochs", type=int, default=100)
     parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--batch-size", type=int, default=1, help="Gradient accumulation batch size.")
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
@@ -142,6 +143,7 @@ def main() -> None:
         rbf_cutoff=args.rbf_cutoff,
         epochs=args.epochs,
         lr=args.lr,
+        batch_size=args.batch_size,
         device=device,
         return_loss_history=True,
     )
@@ -183,6 +185,7 @@ def main() -> None:
         "rbf_bins": args.rbf_bins,
         "rbf_cutoff": args.rbf_cutoff,
         "lr": args.lr,
+        "batch_size": args.batch_size,
         "param_count": int(param_count),
         "loss_history": loss_history,
         "device": device,

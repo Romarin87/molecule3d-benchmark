@@ -30,6 +30,7 @@ LR="${LR:-1e-4}"
 HIDDEN_DIM="${HIDDEN_DIM:-128}"
 NUM_LAYERS_STR="${NUM_LAYERS_STR:-4 5}"
 TRAIN_SIZES_STR="${TRAIN_SIZES_STR:-1000 5000 10000 20000}"
+BATCH_SIZE="${BATCH_SIZE:-32}"
 DO_EVAL="${DO_EVAL:-1}"
 DO_PLOT="${DO_PLOT:-0}"
 RESUME="${RESUME:-0}"
@@ -96,6 +97,7 @@ for num_layers in "${NUM_LAYERS_LIST[@]}"; do
       --num-layers "$num_layers" \
       --epochs "$EPOCHS" \
       --lr "$LR" \
+      --batch-size "$BATCH_SIZE" \
       --device "$DEVICE" \
       --seed "$SEED" \
       --output "$ckpt_path" \

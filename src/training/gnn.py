@@ -93,6 +93,7 @@ def train_mpnn(
     num_layers: int = 4,
     epochs: int = 10,
     lr: float = 1e-3,
+    batch_size: int = 1,
     device: str = "cpu",
     return_loss_history: bool = False,
 ) -> MPNN | tuple[MPNN, list[float]]:
@@ -106,6 +107,7 @@ def train_mpnn(
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
     dataset = list(samples)
+    batch_size = max(int(batch_size), 1)
     total_steps = len(dataset) * epochs
     loss_history: list[float] = []
     with _progress(total=total_steps, desc="train_mpnn") as pbar:
@@ -113,16 +115,29 @@ def train_mpnn(
             model.train()
             epoch_loss = 0.0
             steps = 0
+            batch_count = 0
+            optimizer.zero_grad()
             for sample in dataset:
                 node_feats, edge_index, edge_attr, dist_vec, _ = _to_torch(sample, device=device)
                 pred = model(node_feats, edge_index, edge_attr)
-                loss = F.mse_loss(pred, dist_vec)
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-                epoch_loss += float(loss.item())
+                loss_val = F.mse_loss(pred, dist_vec)
+                (loss_val / batch_size).backward()
+                epoch_loss += float(loss_val.item())
                 steps += 1
+                batch_count += 1
+                if batch_count >= batch_size:
+                    optimizer.step()
+                    optimizer.zero_grad()
+                    batch_count = 0
                 pbar.update(1)
+            if batch_count > 0:
+                if batch_count != batch_size:
+                    scale = batch_size / float(batch_count)
+                    for param in model.parameters():
+                        if param.grad is not None:
+                            param.grad.mul_(scale)
+                optimizer.step()
+                optimizer.zero_grad()
             if steps > 0:
                 loss_history.append(epoch_loss / steps)
             else:
@@ -141,6 +156,7 @@ def train_egnn(
     num_layers: int = 4,
     epochs: int = 10,
     lr: float = 1e-3,
+    batch_size: int = 1,
     device: str = "cpu",
     return_loss_history: bool = False,
 ) -> EGNN | tuple[EGNN, list[float]]:
@@ -155,6 +171,7 @@ def train_egnn(
 
     dataset = list(samples)
     init_coords = [torch.from_numpy(init_coords_from_smiles(sample.smiles)) for sample in dataset]
+    batch_size = max(int(batch_size), 1)
     total_steps = len(dataset) * epochs
     loss_history: list[float] = []
     with _progress(total=total_steps, desc="train_egnn") as pbar:
@@ -162,18 +179,31 @@ def train_egnn(
             model.train()
             epoch_loss = 0.0
             steps = 0
+            batch_count = 0
+            optimizer.zero_grad()
             for sample, init_xyz in zip(dataset, init_coords):
                 node_feats, edge_index, edge_attr, dist_vec, _ = _to_torch(sample, device=device)
                 coords0 = init_xyz.to(device=device, dtype=node_feats.dtype)
                 coords = model(node_feats, edge_index, edge_attr=edge_attr, coords=coords0)
                 pred_dist = _dist_vector_from_coords(coords)
-                loss = F.mse_loss(pred_dist, dist_vec)
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-                epoch_loss += float(loss.item())
+                loss_val = F.mse_loss(pred_dist, dist_vec)
+                (loss_val / batch_size).backward()
+                epoch_loss += float(loss_val.item())
                 steps += 1
+                batch_count += 1
+                if batch_count >= batch_size:
+                    optimizer.step()
+                    optimizer.zero_grad()
+                    batch_count = 0
                 pbar.update(1)
+            if batch_count > 0:
+                if batch_count != batch_size:
+                    scale = batch_size / float(batch_count)
+                    for param in model.parameters():
+                        if param.grad is not None:
+                            param.grad.mul_(scale)
+                optimizer.step()
+                optimizer.zero_grad()
             if steps > 0:
                 loss_history.append(epoch_loss / steps)
             else:
@@ -196,6 +226,7 @@ def train_egnn_transformer(
     rbf_cutoff: float = 5.0,
     epochs: int = 10,
     lr: float = 1e-3,
+    batch_size: int = 1,
     device: str = "cpu",
     return_loss_history: bool = False,
 ) -> EGNNTransformer | tuple[EGNNTransformer, list[float]]:
@@ -214,6 +245,7 @@ def train_egnn_transformer(
 
     dataset = list(samples)
     init_coords = [torch.from_numpy(init_coords_from_smiles(sample.smiles)) for sample in dataset]
+    batch_size = max(int(batch_size), 1)
     total_steps = len(dataset) * epochs
     loss_history: list[float] = []
     with _progress(total=total_steps, desc="train_egnn_transformer") as pbar:
@@ -221,18 +253,31 @@ def train_egnn_transformer(
             model.train()
             epoch_loss = 0.0
             steps = 0
+            batch_count = 0
+            optimizer.zero_grad()
             for sample, init_xyz in zip(dataset, init_coords):
                 node_feats, edge_index, edge_attr, dist_vec, _ = _to_torch(sample, device=device)
                 coords0 = init_xyz.to(device=device, dtype=node_feats.dtype)
                 coords = model(node_feats, edge_index, edge_attr=edge_attr, coords=coords0)
                 pred_dist = _dist_vector_from_coords(coords)
-                loss = F.mse_loss(pred_dist, dist_vec)
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-                epoch_loss += float(loss.item())
+                loss_val = F.mse_loss(pred_dist, dist_vec)
+                (loss_val / batch_size).backward()
+                epoch_loss += float(loss_val.item())
                 steps += 1
+                batch_count += 1
+                if batch_count >= batch_size:
+                    optimizer.step()
+                    optimizer.zero_grad()
+                    batch_count = 0
                 pbar.update(1)
+            if batch_count > 0:
+                if batch_count != batch_size:
+                    scale = batch_size / float(batch_count)
+                    for param in model.parameters():
+                        if param.grad is not None:
+                            param.grad.mul_(scale)
+                optimizer.step()
+                optimizer.zero_grad()
             if steps > 0:
                 loss_history.append(epoch_loss / steps)
             else:
