@@ -1,0 +1,23 @@
+{
+  "fields": [
+    "smiles",
+    "sdf"
+  ],
+  "atom_count": 20,
+  "allowed_elements": [
+    "C",
+    "H",
+    "O",
+    "N"
+  ],
+  "source": "molecule3d",
+  "split": "test",
+  "total_kept": 1000,
+  "total_skipped": 0,
+  "shards": [
+    {
+      "path": "/Users/bwli/Documents/GitHub/molecule3d-benchmark/data/processed/minitest/test_chon20_shard000.npz",
+      "count": 1000
+    }
+  ]
+}

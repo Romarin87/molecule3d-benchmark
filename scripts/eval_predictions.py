@@ -96,6 +96,12 @@ def main() -> None:
         help="Output path for RMSD plot (default: <predictions>_rmsd.png).",
     )
     parser.add_argument("--no-plot", action="store_true", help="Disable RMSD plotting.")
+    parser.add_argument(
+        "--per-sample-output",
+        type=str,
+        default=None,
+        help="Optional JSONL output path for per-sample RMSD records.",
+    )
     args = parser.parse_args()
 
     pred_path = Path(args.predictions).expanduser().resolve()
@@ -115,6 +121,11 @@ def main() -> None:
     skipped = 0
     mismatched = 0
     start = time.time()
+    per_sample_fh = None
+    if args.per_sample_output:
+        per_sample_path = Path(args.per_sample_output).expanduser().resolve()
+        per_sample_path.parent.mkdir(parents=True, exist_ok=True)
+        per_sample_fh = per_sample_path.open("w", encoding="utf-8")
 
     records = _iter_records(
         manifest=args.manifest,
@@ -127,27 +138,46 @@ def main() -> None:
             break
         smi_pred = _coerce_str(pred_smiles[idx])
         sdf_pred = _coerce_str(pred_sdf[idx])
+        status = "ok"
+        reason = None
+        rmsd_val = None
         if not smi_pred or not sdf_pred:
             skipped += 1
-            continue
-        if smi_pred != rec.smiles:
+            status = "skipped"
+            reason = "missing_prediction"
+        elif smi_pred != rec.smiles:
             mismatched += 1
             skipped += 1
-            continue
+            status = "mismatched"
+            reason = "smiles_mismatch"
+        else:
+            pred_mol = _parse_sdf(sdf_pred)
+            if pred_mol is None:
+                skipped += 1
+                status = "skipped"
+                reason = "invalid_sdf"
+            else:
+                gt = Chem.RemoveHs(rec.mol3d)
+                pred = Chem.RemoveHs(pred_mol)
+                if pred.GetNumAtoms() != gt.GetNumAtoms():
+                    skipped += 1
+                    status = "skipped"
+                    reason = "atom_count_mismatch"
+                else:
+                    rmsd_val = best_rmsd(pred, gt)
+                    rmsds.append(rmsd_val)
+                    evaluated += 1
 
-        pred_mol = _parse_sdf(sdf_pred)
-        if pred_mol is None:
-            skipped += 1
-            continue
-
-        gt = Chem.RemoveHs(rec.mol3d)
-        pred = Chem.RemoveHs(pred_mol)
-        if pred.GetNumAtoms() != gt.GetNumAtoms():
-            skipped += 1
-            continue
-
-        rmsds.append(best_rmsd(pred, gt))
-        evaluated += 1
+        if per_sample_fh is not None:
+            record = {
+                "index": int(idx),
+                "smiles": rec.smiles,
+                "pred_smiles": smi_pred,
+                "status": status,
+                "reason": reason,
+                "rmsd": float(rmsd_val) if rmsd_val is not None else None,
+            }
+            per_sample_fh.write(json.dumps(record, ensure_ascii=True) + "\n")
 
     elapsed = time.time() - start
     plot_path = None
@@ -170,11 +200,17 @@ def main() -> None:
         "mismatched": mismatched,
         "elapsed_sec": round(elapsed, 3),
         "plot": plot_path,
+        "per_sample_output": str(Path(args.per_sample_output).expanduser().resolve())
+        if args.per_sample_output
+        else None,
         "metrics": rmsd_stats(rmsds),
     }
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     Path(output_path).write_text(json.dumps(out, indent=2), encoding="utf-8")
     print(json.dumps(out, indent=2))
+
+    if per_sample_fh is not None:
+        per_sample_fh.close()
 
 
 if __name__ == "__main__":

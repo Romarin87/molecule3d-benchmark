@@ -121,7 +121,7 @@ def main() -> None:
     )
 
     train_start = time.time()
-    model = train_egnn(
+    model, loss_history = train_egnn(
         samples=train_samples,
         node_feat_dim=node_feat_dim,
         edge_feat_dim=1,
@@ -130,11 +130,13 @@ def main() -> None:
         epochs=args.epochs,
         lr=args.lr,
         device=device,
+        return_loss_history=True,
     )
     train_elapsed = time.time() - train_start
 
     ckpt_path = Path(args.output).expanduser().resolve()
     ckpt_path.parent.mkdir(parents=True, exist_ok=True)
+    param_count = sum(p.numel() for p in model.parameters() if p.requires_grad)
     payload = {
         "model_state": model.state_dict(),
         "config": {
@@ -160,6 +162,8 @@ def main() -> None:
         "hidden_dim": args.hidden_dim,
         "num_layers": args.num_layers,
         "lr": args.lr,
+        "param_count": int(param_count),
+        "loss_history": loss_history,
         "device": device,
         "seed": args.seed,
         "train_elapsed_sec": round(train_elapsed, 3),

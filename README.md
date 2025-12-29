@@ -5,7 +5,7 @@
 
 ## 功能概览
 - 数据处理：从 Molecule3D parquet 或自定义 SDF 提取 `SMILES + SDF`，输出 `npz` 分片与 manifest。
-- 模型基线：RDKit ETKDG、k-NN 模板检索、距离矩阵回归 + MDS、MPNN、EGNN。
+- 模型基线：RDKit ETKDG、k-NN 模板检索、距离矩阵回归 + MDS、MPNN、EGNN、EGNN+Transformer。
 - 统一评估：各方法先输出结构，再用单一脚本计算 RDKit 对称性 RMSD 与绘图分析。
 
 ## 目录结构
@@ -18,11 +18,12 @@ molecule3d-benchmark/
     train_distance_regressor.py # 训练距离回归模型
     train_mpnn.py          # 训练 MPNN
     train_egnn.py          # 训练 EGNN
+    train_egnn_transformer.py # 训练 EGNN+Transformer
     predict_structures.py  # 统一预测结构输出
     eval_predictions.py    # 统一 RMSD 评估与绘图
   src/
     datasets/              # Molecule3D 读取与图构建
-    models/                # ETKDG、k-NN、距离回归、MPNN、EGNN
+    models/                # ETKDG、k-NN、距离回归、MPNN、EGNN、EGNN+Transformer
     training/              # 训练与评估函数
     metrics/               # RMSD 计算与统计
 ```
@@ -37,7 +38,7 @@ molecule3d-benchmark/
 - `huggingface_hub`：自动下载 Molecule3D 数据集
 - `scikit-learn`：距离回归模型
 - `xgboost`：XGBoost 距离回归
-- `torch`：MPNN / EGNN
+- `torch`：MPNN / EGNN / EGNN+Transformer
 - `matplotlib`：`eval_predictions.py` 绘图
 
 ## 数据准备
@@ -80,6 +81,7 @@ python scripts/train_knn.py --manifest data/processed/train_chon_smiles_sdf_mani
 python scripts/train_distance_regressor.py --manifest data/processed/train_chon_smiles_sdf_manifest.json --atom-count 20
 python scripts/train_mpnn.py --manifest data/processed/train_chon_smiles_sdf_manifest.json
 python scripts/train_egnn.py --manifest data/processed/train_chon_smiles_sdf_manifest.json
+python scripts/train_egnn_transformer.py --manifest data/processed/train_chon_smiles_sdf_manifest.json
 ```
 
 ### 预测（示例）
@@ -89,6 +91,7 @@ python scripts/predict_structures.py --method knn --checkpoint checkpoints/knn.p
 python scripts/predict_structures.py --method distance_regressor --checkpoint checkpoints/distance_regressor.joblib --manifest data/processed/test_chon_smiles_sdf_manifest.json
 python scripts/predict_structures.py --method mpnn --checkpoint checkpoints/mpnn.pt --manifest data/processed/test_chon_smiles_sdf_manifest.json
 python scripts/predict_structures.py --method egnn --checkpoint checkpoints/egnn.pt --manifest data/processed/test_chon_smiles_sdf_manifest.json
+python scripts/predict_structures.py --method egnn_transformer --checkpoint checkpoints/egnn_transformer.pt --manifest data/processed/test_chon_smiles_sdf_manifest.json
 ```
 
 ### 评估与绘图（示例）
@@ -98,12 +101,21 @@ python scripts/eval_predictions.py --predictions pred_etkdg_test_chon_smiles_sdf
 默认会输出 RMSD 直方图与 CDF 图（`<predictions>_rmsd.png`）。
 预测与评估请使用同一个 manifest，以保证样本顺序一致。
 默认会保存指标日志（`<predictions>_metrics.json`），可用 `--output` 指定路径。
+可选：传入 `--per-sample-output` 生成每个样本的 RMSD 记录（JSONL），便于绘制自定义图。
 
 ## 最小流程一键脚本
 ```bash
 bash scripts/run_minitest.sh
 ```
 可选：如果需要指定 parquet 目录，先设置 `DATA_DIR=/path/to/Molecule3D_random_split` 再运行。
+
+## work/ 对比实验脚本
+用于横向对比 MPNN / EGNN / EGNN+Transformer（训练规模 1000/5000/10000/20000）。
+```bash
+bash work/compare_mpnn/run.sh
+bash work/compare_egnn/run.sh
+bash work/compare_egnn_transformer/run.sh
+```
 
 ## Python API（示例）
 ```python
@@ -129,3 +141,4 @@ print(summary)
 - 距离矩阵回归 + MDS：回归原子对距离向量，再用经典 MDS 还原 3D 坐标（可选 MMFF 微调）。
 - MPNN：消息传递网络预测原子对距离向量，随后用 MDS 重建坐标。
 - EGNN：等变 GNN 直接预测 3D 坐标，保持几何等变性。
+- EGNN+Transformer：在 EGNN 坐标更新后加入图 Transformer 注意力层，增强全局建模能力。

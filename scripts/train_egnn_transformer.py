@@ -16,7 +16,7 @@ if str(ROOT) not in sys.path:
 
 from src.datasets.graph import iter_graph_samples
 from src.datasets.molecule3d import iter_manifest_records
-from src.training.gnn import train_mpnn
+from src.training.gnn import train_egnn_transformer
 
 try:
     import torch
@@ -83,7 +83,7 @@ def _load_samples(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Train an MPNN on Molecule3D and save a checkpoint.")
+    parser = argparse.ArgumentParser(description="Train an EGNN+Transformer on Molecule3D and save a checkpoint.")
     parser.add_argument("--manifest", type=str, required=True, help="Path to *_manifest.json from prepare_data.py.")
     parser.add_argument("--atom-count", type=int, default=None, help="Optional atom count filter.")
     parser.add_argument("--elements", type=str, default=None, help="Element symbols or atomic numbers.")
@@ -91,15 +91,24 @@ def main() -> None:
     parser.add_argument("--max-train", type=int, default=0, help="Max training samples (0 means all).")
     parser.add_argument("--hidden-dim", type=int, default=128)
     parser.add_argument("--num-layers", type=int, default=4)
+    parser.add_argument("--num-heads", type=int, default=4)
+    parser.add_argument("--dropout", type=float, default=0.0)
+    parser.add_argument("--rbf-bins", type=int, default=16)
+    parser.add_argument("--rbf-cutoff", type=float, default=5.0)
     parser.add_argument("--epochs", type=int, default=100)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--output", type=str, default="checkpoints/mpnn.pt", help="Path to save checkpoint.")
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="checkpoints/egnn_transformer.pt",
+        help="Path to save checkpoint.",
+    )
     args = parser.parse_args()
 
     if torch is None:
-        raise ImportError("PyTorch is required for MPNN training.")
+        raise ImportError("PyTorch is required for EGNN+Transformer training.")
 
     elements = _parse_elements(args.elements)
     node_feat_dim = _node_feat_dim(elements, args.max_degree)
@@ -121,12 +130,16 @@ def main() -> None:
     )
 
     train_start = time.time()
-    model, loss_history = train_mpnn(
+    model, loss_history = train_egnn_transformer(
         samples=train_samples,
         node_feat_dim=node_feat_dim,
         edge_feat_dim=1,
         hidden_dim=args.hidden_dim,
         num_layers=args.num_layers,
+        num_heads=args.num_heads,
+        dropout=args.dropout,
+        rbf_bins=args.rbf_bins,
+        rbf_cutoff=args.rbf_cutoff,
         epochs=args.epochs,
         lr=args.lr,
         device=device,
@@ -136,17 +149,19 @@ def main() -> None:
 
     ckpt_path = Path(args.output).expanduser().resolve()
     ckpt_path.parent.mkdir(parents=True, exist_ok=True)
-    pair_hidden_dim = int(model.pair_mlp.net[0].out_features)
     param_count = sum(p.numel() for p in model.parameters() if p.requires_grad)
     payload = {
         "model_state": model.state_dict(),
         "config": {
-            "model": "mpnn",
+            "model": "egnn_transformer",
             "node_feat_dim": int(node_feat_dim),
             "edge_feat_dim": 1,
             "hidden_dim": int(args.hidden_dim),
             "num_layers": int(args.num_layers),
-            "pair_hidden_dim": pair_hidden_dim,
+            "num_heads": int(args.num_heads),
+            "dropout": float(args.dropout),
+            "rbf_bins": int(args.rbf_bins),
+            "rbf_cutoff": float(args.rbf_cutoff),
             "elements": list(elements),
             "max_degree": int(args.max_degree),
             "atom_count": args.atom_count,
@@ -163,6 +178,10 @@ def main() -> None:
         "epochs": args.epochs,
         "hidden_dim": args.hidden_dim,
         "num_layers": args.num_layers,
+        "num_heads": args.num_heads,
+        "dropout": args.dropout,
+        "rbf_bins": args.rbf_bins,
+        "rbf_cutoff": args.rbf_cutoff,
         "lr": args.lr,
         "param_count": int(param_count),
         "loss_history": loss_history,

@@ -1,0 +1,23 @@
+{
+  "fields": [
+    "smiles",
+    "sdf"
+  ],
+  "atom_count": 20,
+  "allowed_elements": [
+    "C",
+    "H",
+    "O",
+    "N"
+  ],
+  "source": "molecule3d",
+  "split": "train",
+  "total_kept": 6151,
+  "total_skipped": 0,
+  "shards": [
+    {
+      "path": "/Users/bwli/Documents/GitHub/molecule3d-benchmark/data/processed/work/train_chon20_shard000.npz",
+      "count": 6151
+    }
+  ]
+}

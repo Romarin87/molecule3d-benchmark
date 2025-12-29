@@ -20,6 +20,7 @@ from src.datasets.molecule3d import iter_manifest_records
 from src.models.chem_utils import init_coords_from_smiles, mol_from_smiles_coords
 from src.models.distance_regressor import DistanceRegressorModel
 from src.models.egnn import EGNN
+from src.models.egnn_transformer import EGNNTransformer
 from src.models.etkdg import ETKDGModel
 from src.models.knn_template import KNNTemplateModel
 from src.models.mpnn import MPNN
@@ -79,6 +80,26 @@ def _load_egnn(path: Path, device: str) -> tuple[EGNN, dict]:
     return model, config
 
 
+def _load_egnn_transformer(path: Path, device: str) -> tuple[EGNNTransformer, dict]:
+    payload = torch.load(path, map_location=device)
+    config = payload.get("config")
+    if not isinstance(config, dict) or config.get("model") != "egnn_transformer":
+        raise RuntimeError("Checkpoint model is not EGNNTransformer.")
+    model = EGNNTransformer(
+        node_feat_dim=int(config["node_feat_dim"]),
+        edge_feat_dim=int(config.get("edge_feat_dim", 1)),
+        hidden_dim=int(config["hidden_dim"]),
+        num_layers=int(config["num_layers"]),
+        num_heads=int(config.get("num_heads", 4)),
+        dropout=float(config.get("dropout", 0.0)),
+        rbf_bins=int(config.get("rbf_bins", 16)),
+        rbf_cutoff=float(config.get("rbf_cutoff", 5.0)),
+    ).to(device)
+    model.load_state_dict(payload["model_state"])
+    model.eval()
+    return model, config
+
+
 def _mol_to_sdf(mol: Chem.Mol, name: str | None) -> str:
     mol = Chem.Mol(mol)
     if name:
@@ -104,7 +125,7 @@ def main() -> None:
         "--method",
         type=str,
         required=True,
-        choices=["etkdg", "knn", "distance_regressor", "mpnn", "egnn"],
+        choices=["etkdg", "knn", "distance_regressor", "mpnn", "egnn", "egnn_transformer"],
     )
     parser.add_argument("--checkpoint", type=str, default=None, help="Checkpoint path (not needed for ETKDG).")
     parser.add_argument("--manifest", type=str, required=True, help="Path to *_manifest.json from prepare_data.py.")
@@ -123,7 +144,7 @@ def main() -> None:
         raise ValueError("--checkpoint is required for non-ETKDG methods.")
 
     device = args.device
-    if method in {"mpnn", "egnn"}:
+    if method in {"mpnn", "egnn", "egnn_transformer"}:
         if torch is None:
             raise ImportError("PyTorch is required for GNN prediction.")
         if device != "cpu" and not torch.cuda.is_available():
@@ -165,6 +186,10 @@ def main() -> None:
             atom_count = config.get("atom_count")
     elif method == "egnn":
         model, config = _load_egnn(ckpt_path, device=device)
+        if atom_count is None:
+            atom_count = config.get("atom_count")
+    elif method == "egnn_transformer":
+        model, config = _load_egnn_transformer(ckpt_path, device=device)
         if atom_count is None:
             atom_count = config.get("atom_count")
     else:
@@ -214,6 +239,21 @@ def main() -> None:
                     pred_coords = model.predict_coords(node_feats, edge_index, edge_attr)
                     mol = mol_from_smiles_coords(sample.smiles, pred_coords)
                 elif method == "egnn":
+                    sample = record_to_graph(
+                        rec,
+                        elements=tuple(config["elements"]),
+                        max_degree=int(config["max_degree"]),
+                        atom_count=config.get("atom_count"),
+                    )
+                    if sample is None:
+                        raise RuntimeError("Failed to featurize record.")
+                    node_feats, edge_index, edge_attr, _, _ = sample.to_torch(device=device)
+                    coords0 = torch.from_numpy(init_coords_from_smiles(sample.smiles)).to(
+                        device=device, dtype=node_feats.dtype
+                    )
+                    coords = model(node_feats, edge_index, edge_attr=edge_attr, coords=coords0)
+                    mol = mol_from_smiles_coords(sample.smiles, coords.cpu().numpy())
+                elif method == "egnn_transformer":
                     sample = record_to_graph(
                         rec,
                         elements=tuple(config["elements"]),

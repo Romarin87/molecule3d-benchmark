@@ -7,6 +7,7 @@ import numpy as np
 
 from ..datasets.graph import GraphSample
 from ..models.egnn import EGNN
+from ..models.egnn_transformer import EGNNTransformer
 from ..models.mpnn import MPNN
 from ..models.chem_utils import init_coords_from_smiles
 
@@ -93,7 +94,8 @@ def train_mpnn(
     epochs: int = 10,
     lr: float = 1e-3,
     device: str = "cpu",
-) -> MPNN:
+    return_loss_history: bool = False,
+) -> MPNN | tuple[MPNN, list[float]]:
     _ensure_torch()
     model = MPNN(
         node_feat_dim=node_feat_dim,
@@ -105,9 +107,12 @@ def train_mpnn(
 
     dataset = list(samples)
     total_steps = len(dataset) * epochs
+    loss_history: list[float] = []
     with _progress(total=total_steps, desc="train_mpnn") as pbar:
         for _ in range(epochs):
             model.train()
+            epoch_loss = 0.0
+            steps = 0
             for sample in dataset:
                 node_feats, edge_index, edge_attr, dist_vec, _ = _to_torch(sample, device=device)
                 pred = model(node_feats, edge_index, edge_attr)
@@ -115,8 +120,16 @@ def train_mpnn(
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
+                epoch_loss += float(loss.item())
+                steps += 1
                 pbar.update(1)
+            if steps > 0:
+                loss_history.append(epoch_loss / steps)
+            else:
+                loss_history.append(float("nan"))
 
+    if return_loss_history:
+        return model, loss_history
     return model
 
 
@@ -129,7 +142,8 @@ def train_egnn(
     epochs: int = 10,
     lr: float = 1e-3,
     device: str = "cpu",
-) -> EGNN:
+    return_loss_history: bool = False,
+) -> EGNN | tuple[EGNN, list[float]]:
     _ensure_torch()
     model = EGNN(
         node_feat_dim=node_feat_dim,
@@ -142,9 +156,12 @@ def train_egnn(
     dataset = list(samples)
     init_coords = [torch.from_numpy(init_coords_from_smiles(sample.smiles)) for sample in dataset]
     total_steps = len(dataset) * epochs
+    loss_history: list[float] = []
     with _progress(total=total_steps, desc="train_egnn") as pbar:
         for _ in range(epochs):
             model.train()
+            epoch_loss = 0.0
+            steps = 0
             for sample, init_xyz in zip(dataset, init_coords):
                 node_feats, edge_index, edge_attr, dist_vec, _ = _to_torch(sample, device=device)
                 coords0 = init_xyz.to(device=device, dtype=node_feats.dtype)
@@ -154,6 +171,73 @@ def train_egnn(
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
+                epoch_loss += float(loss.item())
+                steps += 1
                 pbar.update(1)
+            if steps > 0:
+                loss_history.append(epoch_loss / steps)
+            else:
+                loss_history.append(float("nan"))
 
+    if return_loss_history:
+        return model, loss_history
+    return model
+
+
+def train_egnn_transformer(
+    samples: Iterable[GraphSample],
+    node_feat_dim: int,
+    edge_feat_dim: int = 1,
+    hidden_dim: int = 128,
+    num_layers: int = 4,
+    num_heads: int = 4,
+    dropout: float = 0.0,
+    rbf_bins: int = 16,
+    rbf_cutoff: float = 5.0,
+    epochs: int = 10,
+    lr: float = 1e-3,
+    device: str = "cpu",
+    return_loss_history: bool = False,
+) -> EGNNTransformer | tuple[EGNNTransformer, list[float]]:
+    _ensure_torch()
+    model = EGNNTransformer(
+        node_feat_dim=node_feat_dim,
+        edge_feat_dim=edge_feat_dim,
+        hidden_dim=hidden_dim,
+        num_layers=num_layers,
+        num_heads=num_heads,
+        dropout=dropout,
+        rbf_bins=rbf_bins,
+        rbf_cutoff=rbf_cutoff,
+    ).to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+
+    dataset = list(samples)
+    init_coords = [torch.from_numpy(init_coords_from_smiles(sample.smiles)) for sample in dataset]
+    total_steps = len(dataset) * epochs
+    loss_history: list[float] = []
+    with _progress(total=total_steps, desc="train_egnn_transformer") as pbar:
+        for _ in range(epochs):
+            model.train()
+            epoch_loss = 0.0
+            steps = 0
+            for sample, init_xyz in zip(dataset, init_coords):
+                node_feats, edge_index, edge_attr, dist_vec, _ = _to_torch(sample, device=device)
+                coords0 = init_xyz.to(device=device, dtype=node_feats.dtype)
+                coords = model(node_feats, edge_index, edge_attr=edge_attr, coords=coords0)
+                pred_dist = _dist_vector_from_coords(coords)
+                loss = F.mse_loss(pred_dist, dist_vec)
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                epoch_loss += float(loss.item())
+                steps += 1
+                pbar.update(1)
+            if steps > 0:
+                loss_history.append(epoch_loss / steps)
+            else:
+                loss_history.append(float("nan"))
+
+    if return_loss_history:
+        return model, loss_history
     return model
