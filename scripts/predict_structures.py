@@ -214,7 +214,7 @@ def main() -> None:
         max_samples=args.max_samples,
     )
 
-    with torch.no_grad() if method in {"mpnn", "egnn"} else _nullcontext():
+    with torch.no_grad() if method in {"mpnn", "egnn", "egnn_transformer"} else _nullcontext():
         for rec in records:
             processed += 1
             pred_smiles.append(rec.smiles)
@@ -252,7 +252,7 @@ def main() -> None:
                         device=device, dtype=node_feats.dtype
                     )
                     coords = model(node_feats, edge_index, edge_attr=edge_attr, coords=coords0)
-                    mol = mol_from_smiles_coords(sample.smiles, coords.cpu().numpy())
+                    mol = mol_from_smiles_coords(sample.smiles, coords.detach().cpu().numpy())
                 elif method == "egnn_transformer":
                     sample = record_to_graph(
                         rec,
@@ -267,7 +267,7 @@ def main() -> None:
                         device=device, dtype=node_feats.dtype
                     )
                     coords = model(node_feats, edge_index, edge_attr=edge_attr, coords=coords0)
-                    mol = mol_from_smiles_coords(sample.smiles, coords.cpu().numpy())
+                    mol = mol_from_smiles_coords(sample.smiles, coords.detach().cpu().numpy())
                 else:
                     raise ValueError(f"Unknown method: {method}")
                 sdf_block = _mol_to_sdf(mol, rec.smiles)
