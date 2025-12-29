@@ -111,7 +111,7 @@ bash scripts/run_minitest.sh
 可选：如果需要指定 parquet 目录，先设置 `DATA_DIR=/path/to/Molecule3D_random_split` 再运行。
 
 ## work/ 对比实验脚本
-用于横向对比 MPNN / EGNN / EGNN+Transformer（训练规模 1000/5000/10000/20000）。
+用于横向对比 MPNN / EGNN / EGNN+Transformer（训练规模 500/1000/2000/5000/6151）。
 ```bash
 bash work/compare_mpnn/run.sh
 bash work/compare_egnn/run.sh

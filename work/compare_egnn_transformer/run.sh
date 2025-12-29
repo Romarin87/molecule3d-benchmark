@@ -33,7 +33,7 @@ NUM_HEADS="${NUM_HEADS:-4}"
 DROPOUT="${DROPOUT:-0.0}"
 RBF_BINS="${RBF_BINS:-16}"
 RBF_CUTOFF="${RBF_CUTOFF:-5.0}"
-TRAIN_SIZES_STR="${TRAIN_SIZES_STR:-1000 5000 10000 20000}"
+TRAIN_SIZES_STR="${TRAIN_SIZES_STR:-500 1000 2000 5000 6151}"
 BATCH_SIZE="${BATCH_SIZE:-32}"
 DO_EVAL="${DO_EVAL:-1}"
 DO_PLOT="${DO_PLOT:-0}"
@@ -57,6 +57,39 @@ fi
 if [[ "$DO_EVAL" == "1" && ! -f "$VAL_MANIFEST" ]]; then
   echo "Val manifest not found: $VAL_MANIFEST" >&2
   exit 1
+fi
+
+train_total="$(python - <<PY
+import json
+from pathlib import Path
+
+data = json.load(Path("$TRAIN_MANIFEST").open())
+total = data.get("total_kept")
+if total is None:
+    shards = data.get("shards", [])
+    if isinstance(shards, list):
+        total = sum(int(shard.get("count", 0)) for shard in shards)
+try:
+    total = int(total)
+except (TypeError, ValueError):
+    total = 0
+print(total)
+PY
+)"
+if [[ "$train_total" -gt 0 ]]; then
+  filtered=()
+  for size in "${TRAIN_SIZES[@]}"; do
+    if (( size <= train_total )); then
+      filtered+=("$size")
+    else
+      echo "[skip] train_size=$size exceeds total_kept=$train_total" >&2
+    fi
+  done
+  if [[ "${#filtered[@]}" -eq 0 ]]; then
+    echo "No train sizes <= total_kept ($train_total)." >&2
+    exit 1
+  fi
+  TRAIN_SIZES=("${filtered[@]}")
 fi
 
 ATOM_ARGS=()
