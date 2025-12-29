@@ -138,12 +138,14 @@ def _write_shard(
     shard_idx: int,
     smiles_batch: list[str],
     sdf_batch: list[str],
+    relative_paths: bool,
 ) -> dict[str, object]:
     arr_smiles = np.array(smiles_batch, dtype=object)
     arr_sdf = np.array(sdf_batch, dtype=object)
     out_path = out_dir / f"{prefix}_shard{shard_idx:03d}.npz"
     np.savez_compressed(out_path, smiles=arr_smiles, sdf=arr_sdf)
-    return {"path": str(out_path), "count": int(arr_smiles.shape[0])}
+    path_value = str(out_path.relative_to(out_dir)) if relative_paths else str(out_path)
+    return {"path": path_value, "count": int(arr_smiles.shape[0])}
 
 
 def main() -> None:
@@ -165,6 +167,11 @@ def main() -> None:
     parser.add_argument("--prefix", type=str, default=None, help="Output file prefix.")
     parser.add_argument("--shard-size", type=int, default=50000, help="Samples per shard (0 means no sharding).")
     parser.add_argument("--no-download", action="store_true", help="Disable auto-download when cache is missing.")
+    parser.add_argument(
+        "--relative-paths",
+        action="store_true",
+        help="Store shard paths relative to the manifest directory.",
+    )
     args = parser.parse_args()
 
     allowed_elements = _parse_allowed_elements(args.allowed_elements)
@@ -214,14 +221,14 @@ def main() -> None:
         kept += 1
 
         if len(smiles_batch) >= shard_size:
-            shard_info = _write_shard(out_dir, prefix, shard_idx, smiles_batch, sdf_batch)
+            shard_info = _write_shard(out_dir, prefix, shard_idx, smiles_batch, sdf_batch, args.relative_paths)
             manifest["shards"].append(shard_info)
             shard_idx += 1
             smiles_batch = []
             sdf_batch = []
 
     if smiles_batch:
-        shard_info = _write_shard(out_dir, prefix, shard_idx, smiles_batch, sdf_batch)
+        shard_info = _write_shard(out_dir, prefix, shard_idx, smiles_batch, sdf_batch, args.relative_paths)
         manifest["shards"].append(shard_info)
 
     manifest["total_kept"] = kept

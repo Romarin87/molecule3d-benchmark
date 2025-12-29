@@ -16,7 +16,7 @@
   "total_skipped": 0,
   "shards": [
     {
-      "path": "/Users/bwli/Documents/GitHub/molecule3d-benchmark/data/processed/minitest/test_chon20_shard000.npz",
+      "path": "test_chon20_shard000.npz",
       "count": 1000
     }
   ]

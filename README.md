@@ -63,6 +63,7 @@ python scripts/prepare_data.py --split test --max-samples 50000 --allowed-elemen
 输出：
 - `<out-dir>/<prefix>_shardXXX.npz`
 - `<out-dir>/<prefix>_manifest.json`
+可选：加 `--relative-paths` 让 manifest 中的 shard 路径可迁移到其他机器（相对路径）。
 
 ## 查看分片内容
 ```bash

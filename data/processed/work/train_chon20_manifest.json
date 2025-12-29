@@ -16,7 +16,7 @@
   "total_skipped": 0,
   "shards": [
     {
-      "path": "/Users/bwli/Documents/GitHub/molecule3d-benchmark/data/processed/work/train_chon20_shard000.npz",
+      "path": "train_chon20_shard000.npz",
       "count": 6151
     }
   ]

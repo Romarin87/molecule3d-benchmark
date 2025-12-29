@@ -37,6 +37,7 @@ prepare_split() {
     --out-dir "$OUT_DIR"
     --prefix "$prefix"
     --shard-size "$shard_size"
+    --relative-paths
   )
 
   if [[ -n "${ATOM_COUNT:-}" ]]; then
