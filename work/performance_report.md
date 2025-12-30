@@ -26,6 +26,7 @@
 | mpnn | `mpnn_hd128_l5_lr1e_4_ep100_n6151` | 2.244 | 2.035 | 1000/0 | 1000 | l5, hd128 |
 | egnn | `egnn_hd128_l5_lr1e_4_ep100_n1000` | 1.197 | 1.140 | 1000/0 | 1000 | l5, hd128 |
 | egnn_transformer | `egnntr_hd128_l5_h4_lr1e_4_ep100_n5000` | 1.162 | 1.118 | 999/1 | 999 | l5, h4, hd128 |
+- 柱状图（最佳模型 mean/median RMSD）: ![best_methods_bar](report_assets/best_methods_bar.png)
 <!-- AUTO-PLOTS-END -->
 
 <!-- AUTO-EXTRA-START -->
@@ -187,6 +188,22 @@
 | 5 | 414 | 2.808 | `CCOC(=O)NC(C)(C)CN(CCCO)C(=O)OCC` |
 
 <!-- AUTO-OUTLIERS-END -->
+
+<!-- AUTO-CDF-START -->
+## RMSD CDF（每个方法最佳模型）
+- 六个方法的最佳模型 RMSD CDF 曲线对比。
+- 图像: ![rmsd_cdf_best_methods](report_assets/rmsd_cdf_best_methods.png)
+
+| method | run_tag | n | mean |
+| --- | --- | --- | --- |
+| etkdg | `etkdg_c1_mmff0_seed0_it200` | 996 | 1.147 |
+| knn | `knn_k1_r2_b2048_chir0_n2000` | 19 | 1.147 |
+| distance_regressor | `distreg_rf_md6_mmff0_n5000` | 1000 | 2.517 |
+| mpnn | `mpnn_hd128_l5_lr1e_4_ep100_n6151` | 1000 | 2.244 |
+| egnn | `egnn_hd128_l5_lr1e_4_ep100_n1000` | 1000 | 1.197 |
+| egnn_transformer | `egnntr_hd128_l5_h4_lr1e_4_ep100_n5000` | 999 | 1.162 |
+<!-- AUTO-CDF-END -->
+
 
 
 
