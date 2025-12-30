@@ -1,0 +1,16 @@
+{
+  "predictions": "/Users/bwli/Documents/GitHub/molecule3d-benchmark/work/compare_egnn/egnn_hd128_l5_lr1e_4_ep100_n6151/egnn_hd128_l5_lr1e_4_ep100_n6151.npz",
+  "manifest": "/Users/bwli/Documents/GitHub/molecule3d-benchmark/data/processed/work/test_chon20_manifest.json",
+  "pred_count": 1000,
+  "evaluated": 0,
+  "skipped": 1000,
+  "mismatched": 0,
+  "elapsed_sec": 1.104,
+  "plot": null,
+  "per_sample_output": "/Users/bwli/Documents/GitHub/molecule3d-benchmark/work/compare_egnn/egnn_hd128_l5_lr1e_4_ep100_n6151/egnn_hd128_l5_lr1e_4_ep100_n6151_per_sample.jsonl",
+  "metrics": {
+    "count": 0.0,
+    "mean": NaN,
+    "median": NaN
+  }
+}

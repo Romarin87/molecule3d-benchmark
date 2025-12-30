@@ -1,0 +1,18 @@
+{
+  "method": "etkdg",
+  "checkpoint": null,
+  "manifest": "/inspire/hdd/project/chemicalreaction/libowen-253207030265/coding_with_ai/molecule3d-benchmark/data/processed/work/test_chon20_manifest.json",
+  "atom_count": 20,
+  "processed": 1000,
+  "predicted": 996,
+  "failed": 4,
+  "elapsed_sec": 42.508,
+  "output": "/inspire/hdd/project/chemicalreaction/libowen-253207030265/coding_with_ai/molecule3d-benchmark/work/compare_etkdg/etkdg_c1_mmff0_seed0_it200/etkdg_c1_mmff0_seed0_it200.npz",
+  "config": {
+    "model": "etkdg",
+    "num_confs": 1,
+    "seed": 0,
+    "use_mmff": false,
+    "max_iters": 200
+  }
+}

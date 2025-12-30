@@ -1,0 +1,11 @@
+{
+  "manifest": "/inspire/hdd/project/chemicalreaction/libowen-253207030265/coding_with_ai/molecule3d-benchmark/data/processed/work/train_chon20_manifest.json",
+  "train_samples": 6151,
+  "atom_count": 20,
+  "k": 1,
+  "fp_radius": 2,
+  "fp_bits": 2048,
+  "use_chirality": false,
+  "train_elapsed_sec": 2.052,
+  "checkpoint": "/inspire/hdd/project/chemicalreaction/libowen-253207030265/coding_with_ai/molecule3d-benchmark/work/compare_knn/knn_k1_r2_b2048_chir0_n6151/knn_k1_r2_b2048_chir0_n6151.pkl"
+}

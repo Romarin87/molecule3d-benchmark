@@ -1,0 +1,22 @@
+{
+  "predictions": "/inspire/hdd/project/chemicalreaction/libowen-253207030265/coding_with_ai/molecule3d-benchmark/work/compare_knn/knn_k1_r2_b2048_chir0_n6151/knn_k1_r2_b2048_chir0_n6151.npz",
+  "manifest": "/inspire/hdd/project/chemicalreaction/libowen-253207030265/coding_with_ai/molecule3d-benchmark/data/processed/work/test_chon20_manifest.json",
+  "pred_count": 1000,
+  "evaluated": 52,
+  "skipped": 948,
+  "mismatched": 0,
+  "elapsed_sec": 0.246,
+  "plot": null,
+  "per_sample_output": "/inspire/hdd/project/chemicalreaction/libowen-253207030265/coding_with_ai/molecule3d-benchmark/work/compare_knn/knn_k1_r2_b2048_chir0_n6151/knn_k1_r2_b2048_chir0_n6151_per_sample.jsonl",
+  "metrics": {
+    "count": 52.0,
+    "mean": 1.2348003436649688,
+    "median": 1.3021022185764788,
+    "p90": 2.018314422309183,
+    "p95": 2.1454643265883155,
+    "min": 0.002450045327780326,
+    "max": 2.342436717261884,
+    "rmsd_lt_1": 0.34615384615384615,
+    "rmsd_lt_2": 0.8846153846153846
+  }
+}
