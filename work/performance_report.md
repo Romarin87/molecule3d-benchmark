@@ -105,6 +105,33 @@
 | distance_regressor | `distreg_rf_md6_mmff0_n5000` | 1000 | 2.517 | [2.476, 2.562] | 2.531 | [2.486, 2.584] |
 <!-- AUTO-EXTRA-END -->
 
+## 结构可视化示例
+- 样本 index: 402
+- SMILES: `O=C(N/N=C/c1ccco1)C(=O)N/N=C/c1ccco1`
+- EGNN+Transformer 预测 RMSD: 0.292
+- 三维结构可视化（预测构象）: ![example_egnntr_idx402_3d](report_assets/example_egnntr_idx402_3d.png)
+
+## 多方法叠加对比（参考构象透明）
+- 为覆盖所有方法，选取 index=4 的样本进行叠加对比。
+- SMILES: `C[C@H]1CCC/C=C/[C@H]2C[C@H](O)C[C@@H]2[C@H](O)/C=C\C(=O)O1`
+- 交互式版本: [overlay_idx4_interactive.html](report_assets/overlay_idx4_interactive.html)
+
+| method | RMSD |
+| --- | --- |
+| EGNN+Transformer | 1.116 |
+| EGNN | 1.124 |
+| k-NN | 1.532 |
+| ETKDG | 1.595 |
+| Distance Regressor | 2.209 |
+| MPNN | 2.310 |
+
+- ETKDG: ![overlay_idx4_etkdg](report_assets/overlay_idx4_etkdg.png)
+- k-NN: ![overlay_idx4_knn](report_assets/overlay_idx4_knn.png)
+- Distance Regressor: ![overlay_idx4_distance_regressor](report_assets/overlay_idx4_distance_regressor.png)
+- MPNN: ![overlay_idx4_mpnn](report_assets/overlay_idx4_mpnn.png)
+- EGNN: ![overlay_idx4_egnn](report_assets/overlay_idx4_egnn.png)
+- EGNN+Transformer: ![overlay_idx4_egnnplustransformer](report_assets/overlay_idx4_egnnplustransformer.png)
+
 <!-- AUTO-OUTLIERS-START -->
 ## 极端样本可视化（每种方法最佳模型 Top-K）
 - 在每种方法最佳模型中，取 RMSD 最大的 Top-5 样本进行可视化。
@@ -203,6 +230,26 @@
 | egnn | `egnn_hd128_l5_lr1e_4_ep100_n1000` | 1000 | 1.197 |
 | egnn_transformer | `egnntr_hd128_l5_h4_lr1e_4_ep100_n5000` | 999 | 1.162 |
 <!-- AUTO-CDF-END -->
+
+<!-- AUTO-FIGURE-SUMMARIES-START -->
+## 图表解读（汇报用要点）
+- `report_assets/best_trainable_loss.png`：训练损失从 1.17 降到 0.50（约 57% 降幅），在约第 16 个 epoch 后趋于平稳；对应模型为 EGNN+Transformer。
+- `report_assets/best_methods_boxplot.png`：中位数最低的为 EGNN+Transformer, ETKDG，分布更集中；MPNN, Distance Regressor 中位数最高。 注意 k-NN(n=19) 样本量较小。
+- `report_assets/best_methods_bar.png`：均值/中位数对比显示 ETKDG, k-NN 最优，MPNN, Distance Regressor 误差最高。
+- `report_assets/train_size_vs_rmsd_log.png`：训练规模从 500 增加到 5000 时，MPNN/Distance Regressor 改善明显，EGNN/EGNN+Transformer 改善较小且趋于饱和；5000 之后边际收益有限，k-NN 波动较大（样本量偏少）。
+- `report_assets/rmsd_vs_params.png`：EGNN+Transformer 在更高参数量下取得最低 RMSD；EGNN 在参数量中等区间表现优于 MPNN，体现更好的参数效率。
+- `report_assets/rmsd_vs_train_time.png`：EGNN+Transformer 误差最低但训练耗时更高；EGNN 在耗时与精度之间取得更均衡的折中。
+- `report_assets/binned_heavy_atoms.png`：测试集 heavy atoms 主要集中在 20（占比最高），18/19 样本较少，因此该分桶结果不稳定。
+- `report_assets/binned_rot_bonds.png`：多数方法在 rotatable bonds 增加时 RMSD 上升（5/6 方法呈正趋势），说明分子越柔性越难预测。
+- `report_assets/binned_rings.png`：环数对 RMSD 的影响相对温和（1/6 方法趋势接近持平），整体变化不如 rot_bonds 明显。
+- `report_assets/outliers_etkdg.png`：Top-5 误差样本通常更柔性/更复杂，可旋转键中位数 12（整体中位数 4）。
+- `report_assets/outliers_knn.png`：Top-5 误差样本通常更柔性/更复杂，可旋转键中位数 2（整体中位数 4）。
+- `report_assets/outliers_distance_regressor.png`：Top-5 误差样本通常更柔性/更复杂，可旋转键中位数 12（整体中位数 4）。
+- `report_assets/outliers_mpnn.png`：Top-5 误差样本通常更柔性/更复杂，可旋转键中位数 9（整体中位数 4）。
+- `report_assets/outliers_egnn.png`：Top-5 误差样本通常更柔性/更复杂，可旋转键中位数 9（整体中位数 4）。
+- `report_assets/outliers_egnn_transformer.png`：Top-5 误差样本通常更柔性/更复杂，可旋转键中位数 9（整体中位数 4）。
+- `report_assets/rmsd_cdf_best_methods.png`：在 RMSD≤2Å 门槛下，k-NN 的累计通过率最高；低阈值区域越靠左/越高代表整体更优。
+<!-- AUTO-FIGURE-SUMMARIES-END -->
 
 
 
